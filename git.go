@@ -87,6 +87,31 @@ func (s *GitRepo) Get() error {
 	return err
 }
 
+// Initialize a git repository at local location.
+func (s *GitRepo) Init() error {
+	_, err := s.run("git", "init", s.LocalPath())
+
+	// There are some windows cases where Git cannot create the parent directory,
+	// if it does not already exist, to the location it's trying to create the
+	// repo. Catch that error and try to handle it.
+	if err != nil && s.isUnableToCreateDir(err) {
+
+		basePath := filepath.Dir(filepath.FromSlash(s.LocalPath()))
+		if _, err := os.Stat(basePath); os.IsNotExist(err) {
+			err = os.MkdirAll(basePath, 0755)
+			if err != nil {
+				return err
+			}
+
+			_, err = s.run("git", "init", s.LocalPath())
+			return err
+		}
+
+	}
+
+	return err
+}
+
 // Update performs an Git fetch and pull to an existing checkout.
 func (s *GitRepo) Update() error {
 	// Perform a fetch to make sure everything is up to date.
